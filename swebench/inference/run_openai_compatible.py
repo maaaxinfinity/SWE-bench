@@ -31,6 +31,18 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 THINK_TAG_RE = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
 
 
+def normalize_dataset_name(name: str) -> str:
+    lower = name.lower()
+    if lower in {
+        "swe-bench/swe-bench_oracle",
+        "swe-bench_oracle",
+        "swebench_oracle",
+        "oracle",
+    }:
+        return "princeton-nlp/SWE-bench_oracle"
+    return name
+
+
 def load_env_file(path: str) -> None:
     env_path = Path(path)
     if not env_path.exists():
@@ -425,14 +437,15 @@ def main() -> None:
     model_args = parse_model_args(args.model_args)
     max_tokens = None if args.max_tokens is not None and args.max_tokens <= 0 else args.max_tokens
 
-    prompt_dataset = load_dataset_split(args.prompt_dataset, args.prompt_split)
+    prompt_dataset_name = normalize_dataset_name(args.prompt_dataset)
+    prompt_dataset = load_dataset_split(prompt_dataset_name, args.prompt_split)
     if "instance_id" not in prompt_dataset.column_names:
         raise ValueError(
-            f'Prompt dataset "{args.prompt_dataset}" missing "instance_id" field.'
+            f'Prompt dataset "{prompt_dataset_name}" missing "instance_id" field.'
         )
     if "text" not in prompt_dataset.column_names:
         raise ValueError(
-            f'Prompt dataset "{args.prompt_dataset}" missing "text" field. '
+            f'Prompt dataset "{prompt_dataset_name}" missing "text" field. '
             "Use an inference dataset like SWE-bench_oracle or SWE-bench_bm25_*."
         )
     prompt_ids = set(prompt_dataset["instance_id"])
