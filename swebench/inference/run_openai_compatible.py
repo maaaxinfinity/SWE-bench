@@ -85,6 +85,40 @@ def strip_think(text: Optional[str]) -> Optional[str]:
     return THINK_TAG_RE.sub("", text)
 
 
+def sanitize_patch(patch: Optional[str]) -> str:
+    if not patch:
+        return ""
+    patch = patch.strip()
+    if not patch:
+        return ""
+    # Trim leading text before diff markers
+    idx = patch.find("diff --git ")
+    if idx < 0:
+        idx = patch.find("--- a/")
+    if idx > 0:
+        patch = patch[idx:]
+    # Strip fenced code blocks
+    if patch.startswith("```"):
+        lines = patch.splitlines()
+        if lines and lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].startswith("```"):
+            lines = lines[:-1]
+        patch = "\n".join(lines).strip()
+    # Remove any stray fence lines
+    patch = "\n".join(
+        line for line in patch.splitlines() if not line.strip().startswith("```")
+    ).strip()
+    if not patch:
+        return ""
+    # Basic diff sanity check
+    if "diff --git " not in patch and not ("--- a/" in patch and "+++ b/" in patch):
+        return ""
+    if not patch.endswith("\n"):
+        patch += "\n"
+    return patch
+
+
 def parse_model_args(arg: Optional[str]) -> Dict[str, Any]:
     if not arg:
         return {}
@@ -428,6 +462,21 @@ def parse_args() -> argparse.Namespace:
     parser.set_defaults(
         save_full_output=os.environ.get("SAVE_FULL_OUTPUT", "true").lower() != "false"
     )
+    parser.add_argument(
+        "--strict_patch",
+        dest="strict_patch",
+        action="store_true",
+        help="Drop malformed patches that lack diff headers",
+    )
+    parser.add_argument(
+        "--no-strict-patch",
+        dest="strict_patch",
+        action="store_false",
+        help="Keep raw patch content even if diff headers are missing",
+    )
+    parser.set_defaults(
+        strict_patch=os.environ.get("STRICT_PATCH", "true").lower() != "false"
+    )
     return parser.parse_args()
 
 
@@ -561,6 +610,8 @@ def main() -> None:
             if args.strip_think:
                 content = strip_think(content)
             patch = extract_diff(content)
+            if args.strict_patch:
+                patch = sanitize_patch(patch)
             result = {
                 "instance_id": record["instance_id"],
                 "model_name_or_path": args.model,

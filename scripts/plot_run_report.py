@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import re
 from pathlib import Path
 from typing import Dict, List
 
@@ -15,6 +16,16 @@ from typing import Dict, List
 def load_report(path: Path) -> Dict:
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
+
+
+def format_label(path: Path) -> str:
+    stem = path.stem
+    match = re.search(r"-run(\d+)$", stem)
+    if match:
+        run_idx = match.group(1)
+        stem = stem[: match.start()]
+        return f"{stem}@{run_idx}"
+    return stem
 
 
 def parse_args() -> argparse.Namespace:
@@ -87,7 +98,7 @@ def main() -> None:
         print(f"matplotlib not available, wrote CSV only: {exc}")
         return
 
-    labels = [row["report"] for row in rows]
+    labels = [format_label(Path(row["report"])) for row in rows]
     rates = [row["resolution_rate"] * 100 for row in rows]
 
     fig, ax = plt.subplots(figsize=(max(6, len(labels) * 0.6), 4))
