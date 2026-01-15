@@ -75,6 +75,9 @@ docs = [
     "pymdown-extensions",
     "mkdocs-include-markdown-plugin",
 ]
+plot = [
+    "matplotlib",
+]
 
 [tool.setuptools]
 include-package-data = true
