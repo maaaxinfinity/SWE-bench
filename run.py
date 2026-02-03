@@ -253,6 +253,9 @@ def build_inference_cmd(args: argparse.Namespace, output_file: str) -> List[str]
 
 
 def build_eval_cmd(args: argparse.Namespace, predictions_path: str, run_id: str) -> List[str]:
+    predictions_arg = predictions_path
+    if predictions_path != "gold":
+        predictions_arg = str(Path(predictions_path).resolve())
     cmd = [
         sys.executable,
         "-m",
@@ -262,7 +265,7 @@ def build_eval_cmd(args: argparse.Namespace, predictions_path: str, run_id: str)
         "--split",
         args.eval_split,
         "--predictions_path",
-        predictions_path,
+        predictions_arg,
         "--max_workers",
         str(args.max_workers),
         "--open_file_limit",
