@@ -298,6 +298,14 @@ def build_eval_cmd(args: argparse.Namespace, predictions_path: str, run_id: str)
 
 def main() -> int:
     args = parse_args()
+    repo_root = Path(__file__).resolve().parent
+    subprocess_env = os.environ.copy()
+    existing_pythonpath = subprocess_env.get("PYTHONPATH", "")
+    subprocess_env["PYTHONPATH"] = (
+        str(repo_root)
+        if not existing_pythonpath
+        else f"{repo_root}{os.pathsep}{existing_pythonpath}"
+    )
     stages_selected = args.pred or args.eval or args.plot
     run_pred = args.pred or not stages_selected
     run_eval = args.eval or not stages_selected
@@ -334,7 +342,12 @@ def main() -> int:
 
     if run_pred:
         cmd = build_inference_cmd(args, output_file)
-        subprocess.run(cmd, check=True, cwd=run_root if run_root else None)
+        subprocess.run(
+            cmd,
+            check=True,
+            cwd=run_root if run_root else None,
+            env=subprocess_env,
+        )
 
     if run_eval:
         if not args.run_id:
@@ -366,7 +379,12 @@ def main() -> int:
         for idx, pred_file in enumerate(pred_files, start=1):
             run_id = derive_run_id(args.run_id, pred_file, idx, total)
             cmd = build_eval_cmd(args, pred_file, run_id)
-            subprocess.run(cmd, check=True, cwd=run_root if run_root else None)
+            subprocess.run(
+                cmd,
+                check=True,
+                cwd=run_root if run_root else None,
+                env=subprocess_env,
+            )
             report_name = f"{model_tag}.{run_id}.json"
             report_path = str((run_root / report_name) if run_root else Path(report_name))
             report_files.append(report_path)
@@ -396,7 +414,7 @@ def main() -> int:
             "--out_dir",
             str(plot_dir),
         ]
-        subprocess.run(cmd, check=True)
+        subprocess.run(cmd, check=True, env=subprocess_env)
 
     return 0
 
