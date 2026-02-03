@@ -242,7 +242,7 @@ def build_inference_cmd(args: argparse.Namespace, output_file: str) -> List[str]
     if args.instance_ids_file:
         cmd += ["--instance_ids_file", args.instance_ids_file]
     if args.strip_think:
-        cmd += ["--strip-think"]
+        cmd += ["--strip_think"]
     else:
         cmd += ["--no-strip-think"]
     if args.strict_patch:

@@ -217,6 +217,7 @@ def post_with_retry(
     retry_backoff_s: float,
 ) -> Dict[str, Any]:
     attempt = 0
+    last_exc: Optional[BaseException] = None
     while True:
         try:
             response = client.post(
@@ -227,15 +228,19 @@ def post_with_retry(
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as exc:
+            last_exc = exc
             status = exc.response.status_code
             if status not in (429, 500, 502, 503, 504):
                 raise
             attempt += 1
-        except (httpx.TimeoutException, httpx.RequestError):
+        except (httpx.TimeoutException, httpx.RequestError) as exc:
+            last_exc = exc
             attempt += 1
 
         if attempt > max_retries:
-            raise
+            if last_exc is not None:
+                raise last_exc
+            raise RuntimeError("Request failed after retries but no exception was captured.")
         sleep_s = retry_backoff_s * (2 ** (attempt - 1))
         sleep_s *= 0.5 + random.random()
         time.sleep(sleep_s)

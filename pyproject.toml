@@ -27,6 +27,7 @@ dependencies = [
     "docker",
     "ghapi",
     "GitPython",
+    "httpx",
     "modal",
     "pre-commit",
     "python-dotenv",
